@@ -1,0 +1,32 @@
+# Exclude Python virtual environments
+fastmcp/.venv
+rapidapi_mcp/.venv
+
+# Exclude node modules
+node_modules
+
+# Exclude git and version control
+.git
+
+# Exclude OS and editor files
+.DS_Store
+Thumbs.db
+
+# Exclude logs
+*.log
+
+# Exclude test and temp files
+*.test.*
+*.spec.*
+coverage/
+
+# Exclude build artifacts
+android/.gradle
+android/build
+android/app/build
+
+# Exclude Expo/React Native cache
+.expo
+.expo-shared
+
+# Exclude other non-app directories if needed 
