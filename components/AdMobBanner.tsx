@@ -1,48 +1,60 @@
 /**
- * AdMobBanner Component
+ * AdMobBanner.tsx
  * 
- * Displays banner ads using Google AdMob with test IDs.
- * Automatically hides ads for subscribed users.
+ * AdMob banner component for displaying advertisements.
+ * Shows placeholder in Expo Go (native module not available).
  */
-
-import subscriptionService from '@/services/subscriptionService';
-import React, { useEffect, useState } from 'react';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+// import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'; // Disabled for Expo Go
 
 interface Props {
-  isSubscriber?: boolean;
+  isSubscriber: boolean;
 }
 
-// Use test IDs for all environments to ensure safe testing
-const adUnitId = TestIds.ADAPTIVE_BANNER;
+export default function AdMobBannerComponent({ isSubscriber }: Props) {
+  // Don't show ads if user is a subscriber
+  if (isSubscriber) {
+    return null;
+  }
 
-export default function AdMobBannerComponent({ isSubscriber: propIsSubscriber }: Props) {
-  const [isSubscriber, setIsSubscriber] = useState(propIsSubscriber ?? false);
+  // For Expo Go - show placeholder
+  return (
+    <View style={styles.placeholder}>
+      <Text style={styles.placeholderText}>
+        [AdMob Banner Placeholder - Use development build for real ads]
+      </Text>
+    </View>
+  );
 
-  useEffect(() => {
-    if (propIsSubscriber !== undefined) return;
-    subscriptionService.getCachedSubscriptionStatus().then(setIsSubscriber);
-  }, [propIsSubscriber]);
-
-  // Don't show ads for subscribers
-  if (isSubscriber) return null;
-  
-  // Don't show ads if no ad unit ID
-  if (!adUnitId) return null;
-
+  // For production builds with native modules:
+  /*
   return (
     <BannerAd
-      unitId={adUnitId}
-      size={BannerAdSize.ADAPTIVE_BANNER}
+      unitId={TestIds.ADAPTIVE_BANNER}
+      size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
       requestOptions={{
-        requestNonPersonalizedAdsOnly: false,
-      }}
-      onAdLoaded={() => {
-        console.log('Banner ad loaded');
-      }}
-      onAdFailedToLoad={(error: any) => {
-        console.warn('AdMob error:', error);
+        requestNonPersonalizedAdsOnly: true,
       }}
     />
   );
-} 
+  */
+}
+
+const styles = StyleSheet.create({
+  placeholder: {
+    height: 60,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+    margin: 8,
+  },
+  placeholderText: {
+    color: '#888',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+}); 

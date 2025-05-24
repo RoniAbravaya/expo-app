@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as InAppPurchases from 'expo-in-app-purchases';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
-import * as analyticsService from './analyticsService';
+// TODO: Re-add expo-in-app-purchases when compatible version is available
+// import * as InAppPurchases from 'expo-in-app-purchases';
+import { getApps } from 'firebase/app';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 
 const PRODUCT_IDS = ['your_subscription_product_id_here']; // TODO: Update with your real product IDs
 const SUB_STATUS_KEY = 'subscriptionStatus';
@@ -9,49 +10,49 @@ const SUB_STATUS_KEY = 'subscriptionStatus';
 const subscriptionService = {
   async getSubscriptionStatus(uid?: string): Promise<boolean> {
     if (!uid) return false;
-    const db = getFirestore();
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    const status = userDoc.exists() ? userDoc.data()?.subscription?.active : false;
-    await AsyncStorage.setItem(SUB_STATUS_KEY, status ? 'active' : 'inactive');
-    return !!status;
-  },
-  async getCachedSubscriptionStatus(): Promise<boolean> {
-    const status = await AsyncStorage.getItem(SUB_STATUS_KEY);
-    return status === 'active';
-  },
-  async purchaseSubscription(uid?: string): Promise<void> {
-    if (!uid) throw new Error('User not logged in');
-    await InAppPurchases.connectAsync();
-    const { responseCode, results } = await InAppPurchases.getProductsAsync(PRODUCT_IDS);
-    if (responseCode !== InAppPurchases.IAPResponseCode.OK || !results.length) {
-      throw new Error('Unable to fetch products');
-    }
-    const productId = results[0].productId;
-    const purchaseResult = await InAppPurchases.purchaseItemAsync(productId);
-    if (purchaseResult.responseCode !== InAppPurchases.IAPResponseCode.OK) {
-      throw new Error('Purchase failed');
-    }
-    // Mark as active in Firestore
-    const db = getFirestore();
-    await setDoc(doc(db, 'users', uid), { subscription: { active: true, lastPurchase: Date.now() } }, { merge: true });
-    await analyticsService.logSubscriptionConversion(uid);
-    await AsyncStorage.setItem(SUB_STATUS_KEY, 'active');
-    await InAppPurchases.disconnectAsync();
-  },
-  async restorePurchases(uid?: string): Promise<boolean> {
-    if (!uid) throw new Error('User not logged in');
-    await InAppPurchases.connectAsync();
-    const history = await InAppPurchases.getPurchaseHistoryAsync();
-    const hasActive = history.results.some((item) => PRODUCT_IDS.includes(item.productId));
-    if (hasActive) {
+    
+    try {
+      // Check if Firebase is initialized
+      if (!getApps().length) {
+        console.warn('Firebase not initialized, cannot get subscription status');
+        return false;
+      }
+      
       const db = getFirestore();
-      await setDoc(doc(db, 'users', uid), { subscription: { active: true, lastRestore: Date.now() } }, { merge: true });
-      await AsyncStorage.setItem(SUB_STATUS_KEY, 'active');
-    } else {
-      await AsyncStorage.setItem(SUB_STATUS_KEY, 'inactive');
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      const status = userDoc.exists() ? userDoc.data()?.subscription?.active : false;
+      await AsyncStorage.setItem(SUB_STATUS_KEY, status ? 'active' : 'inactive');
+      return !!status;
+    } catch (error) {
+      console.warn('Error getting subscription status:', error);
+      return false;
     }
-    await InAppPurchases.disconnectAsync();
-    return hasActive;
+  },
+
+  async getCachedSubscriptionStatus(): Promise<boolean> {
+    try {
+      const cached = await AsyncStorage.getItem(SUB_STATUS_KEY);
+      return cached === 'active';
+    } catch (error) {
+      console.warn('Error getting cached subscription status:', error);
+      return false;
+    }
+  },
+
+  async purchaseSubscription(uid?: string): Promise<boolean> {
+    // TODO: Implement when expo-in-app-purchases is compatible
+    console.log('Purchase subscription not yet implemented');
+    return false;
+  },
+
+  async restorePurchases(uid?: string): Promise<boolean> {
+    // TODO: Implement when expo-in-app-purchases is compatible
+    console.log('Restore purchases not yet implemented');
+    if (!uid) throw new Error('User not logged in');
+    
+    // For now, just return false (no active subscription)
+    await AsyncStorage.setItem(SUB_STATUS_KEY, 'inactive');
+    return false;
   },
 };
 

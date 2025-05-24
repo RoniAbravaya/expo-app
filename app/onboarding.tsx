@@ -1,68 +1,85 @@
 /**
  * OnboardingScreen
  *
- * Provides a multi-step onboarding experience using AppIntroSlider. Introduces users to the app's main features (Trending, Favorites, AI Summary).
- * Marks onboarding as complete in AsyncStorage and navigates to the main tabs. Uses ThemedText for consistent styling.
+ * Simple onboarding screen that welcomes users and marks onboarding as complete.
+ * Uses ThemedText for consistent styling.
  */
 import { ThemedText } from '@/components/ThemedText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, StyleSheet, View } from 'react-native';
-import AppIntroSlider from 'react-native-app-intro-slider';
-
-const slides = [
-  {
-    key: 'one',
-    title: t('onboarding.slide1Title'),
-    text: t('onboarding.slide1Text'),
-  },
-  {
-    key: 'two',
-    title: t('onboarding.slide2Title'),
-    text: t('onboarding.slide2Text'),
-  },
-  {
-    key: 'three',
-    title: t('onboarding.slide3Title'),
-    text: t('onboarding.slide3Text'),
-  },
-];
-
-type Slide = { key: string; title: string; text: string };
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const handleDone = async () => {
-    await AsyncStorage.setItem('onboardingComplete', 'true');
-    Alert.alert(t('onboarding.complete'));
-    router.replace('/'); // Go to main tabs
+
+  const handleComplete = async () => {
+    try {
+      await AsyncStorage.setItem('onboardingComplete', 'true');
+      console.log('Onboarding marked as complete');
+      router.replace('/(tabs)'); // Go to main tabs
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
   };
 
   return (
-    // @ts-ignore: AppIntroSlider works as a function component in Expo
-    <AppIntroSlider
-      data={slides}
-      renderItem={({ item }: { item: Slide }) => (
-        <View style={styles.slide}>
-          <ThemedText type="title">{item.title}</ThemedText>
-          <ThemedText>{item.text}</ThemedText>
-        </View>
-      )}
-      onDone={handleDone}
-      showSkipButton
-      onSkip={handleDone}
-    />
+    <View style={styles.container}>
+      <ThemedText type="title" style={styles.title}>
+        {t('onboarding.slide1Title')}
+      </ThemedText>
+      
+      <ThemedText style={styles.text}>
+        {t('onboarding.slide1Text')}
+      </ThemedText>
+      
+      <ThemedText style={styles.text}>
+        {t('onboarding.slide2Text')}
+      </ThemedText>
+      
+      <ThemedText style={styles.text}>
+        {t('onboarding.slide3Text')}
+      </ThemedText>
+      
+      <TouchableOpacity style={styles.button} onPress={handleComplete}>
+        <ThemedText style={styles.buttonText}>
+          Get Started
+        </ThemedText>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  slide: {
+  container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+    backgroundColor: 'white',
+  },
+  title: {
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  text: {
+    marginBottom: 16,
+    textAlign: 'center',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 32,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 }); 

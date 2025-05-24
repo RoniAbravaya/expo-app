@@ -1,12 +1,12 @@
-// Firebase configuration for Expo app. Uses Expo's environment variable system (process.env.EXPO_PUBLIC_*).
-// Do not commit real API keys to version control.
+// Firebase configuration for Expo app. 
+// Using credentials directly for development - extracted from google-services.json
 
 export const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyDd8L9Jq8phZfBRHmOUwDV4fhQm9hQCgW8",
+  authDomain: "new-adnroid-app.firebaseapp.com", 
+  projectId: "new-adnroid-app",
+  storageBucket: "new-adnroid-app.firebasestorage.app",
+  messagingSenderId: "567278456957",
+  appId: "1:567278456957:android:af6c2aa7987add7db36114", // Correct app ID for com.roni.marketai (has Android OAuth client)
+  measurementId: "G-XXXXXXXXXX", // Optional for analytics
 }; 

@@ -1,75 +1,105 @@
 /**
- * AdMobRewarded Component
+ * AdMobRewarded.tsx
  * 
- * Displays rewarded ads using Google AdMob with test IDs.
- * Shows ads after 1 minute of app usage for non-subscribers.
+ * AdMob rewarded video component for premium features.
+ * Shows placeholder in Expo Go (native module not available).
  */
-
-import * as analyticsService from '@/services/analyticsService';
-import subscriptionService from '@/services/subscriptionService';
-import { useEffect, useRef, useState } from 'react';
-import { RewardedAd, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// import { RewardedAd, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads'; // Disabled for Expo Go
 
 interface Props {
-  isSubscriber?: boolean;
+  isSubscriber: boolean;
 }
 
-// Use test IDs for all environments to ensure safe testing
-const adUnitId = TestIds.REWARDED;
+export default function AdMobRewardedComponent({ isSubscriber }: Props) {
+  const [rewardedAdLoaded, setRewardedAdLoaded] = useState(false);
 
-export default function AdMobRewardedComponent({ isSubscriber: propIsSubscriber }: Props) {
-  const [isSubscriber, setIsSubscriber] = useState(propIsSubscriber ?? false);
-  const [shown, setShown] = useState(false);
-  const timerRef = useRef<any>(null);
-  const rewardedAd = useRef<RewardedAd | null>(null);
+  // Don't show for subscribers
+  if (isSubscriber) {
+    return null;
+  }
 
+  // For Expo Go - show placeholder
+  const showRewardedAd = () => {
+    Alert.alert(
+      'Rewarded Ad Placeholder',
+      'This would show a rewarded video ad in a development build. Reward granted for testing!',
+      [{ text: 'OK', onPress: () => console.log('Mock reward granted') }]
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.button} onPress={showRewardedAd}>
+        <Text style={styles.buttonText}>Watch Ad for Reward (Mock)</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // For production builds with native modules:
+  /*
+  const [rewarded, setRewarded] = useState<RewardedAd | null>(null);
+  
   useEffect(() => {
-    if (propIsSubscriber !== undefined) return;
-    subscriptionService.getCachedSubscriptionStatus().then(setIsSubscriber);
-  }, [propIsSubscriber]);
-
-  useEffect(() => {
-    if (isSubscriber || shown || !adUnitId) return;
-    
-    // Create the rewarded ad
-    const rewarded = RewardedAd.createForAdRequest(adUnitId!, {
-      requestNonPersonalizedAdsOnly: false,
-    });
-    rewardedAd.current = rewarded;
-
-    // Add event listeners
-    const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      console.log('Rewarded ad loaded');
+    const rewardedAd = RewardedAd.createForAdRequest(TestIds.REWARDED, {
+      requestNonPersonalizedAdsOnly: true,
     });
 
-    const unsubscribeEarned = rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward: any) => {
-      console.log('User earned reward of ', reward);
-      analyticsService.logAdView('rewarded');
-      setShown(true);
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      setRewardedAdLoaded(true);
+      setRewarded(rewardedAd);
     });
 
-    timerRef.current = setTimeout(async () => {
-      try {
-        // Load the ad
-        rewarded.load();
-        
-        // Wait a bit for the ad to load, then show it
-        setTimeout(() => {
-          if (rewarded.loaded) {
-            rewarded.show();
-          }
-        }, 2000);
-      } catch (err) {
-        console.warn('AdMobRewarded error:', err);
+    const unsubscribeEarned = rewardedAd.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      (reward) => {
+        console.log('User earned reward of ', reward);
+        // Handle reward logic here
       }
-    }, 60000); // 1 minute
+    );
+
+    rewardedAd.load();
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
       unsubscribeLoaded();
       unsubscribeEarned();
     };
-  }, [isSubscriber, shown]);
+  }, []);
 
-  return null;
-} 
+  return rewardedAdLoaded ? (
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={() => rewarded?.show()}
+      >
+        <Text style={styles.buttonText}>Watch Ad for Reward</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+  */
+}
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    zIndex: 1000,
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+}); 

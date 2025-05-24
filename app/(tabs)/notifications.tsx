@@ -2,7 +2,7 @@
  * NotificationsScreen
  *
  * Allows users to register for push notifications, view their Expo push token, and see notification status/messages.
- * Uses Expo Notifications API and notificationsService. Handles loading, error, and empty states.
+ * Shows helpful message for Expo Go limitations in SDK 53+.
  * Uses ThemedText for consistent styling.
  */
 import { ThemedText } from '@/components/ThemedText';
@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Button, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet } from 'react-native';
 
 const NOTIF_HISTORY_KEY = 'notificationHistory';
 
@@ -25,6 +25,16 @@ export default function NotificationsScreen() {
   const { t } = useTranslation();
 
   const registerForPushNotifications = async () => {
+    // Check if running in Expo Go
+    if (Constants.appOwnership === 'expo') {
+      Alert.alert(
+        'Expo Go Limitation',
+        'Push notifications are not available in Expo Go with SDK 53+. Use a development build or production build to test notifications.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setStatus('');
@@ -49,6 +59,7 @@ export default function NotificationsScreen() {
       setToken(tokenData.data);
       setStatus(t('notifications.enabled'));
     } catch (e: any) {
+      console.warn('Notifications error:', e);
       setError(e.message || t('notifications.errorRegistering'));
     } finally {
       setLoading(false);
@@ -58,6 +69,14 @@ export default function NotificationsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ThemedText type="title">{t('notifications.title')}</ThemedText>
+      
+      {Constants.appOwnership === 'expo' && (
+        <ThemedText style={styles.warningText}>
+          ⚠️ Push notifications are not available in Expo Go with SDK 53+. 
+          Use a development build to test notifications.
+        </ThemedText>
+      )}
+      
       <Button title={t('notifications.registerButton')} onPress={registerForPushNotifications} disabled={loading} />
       {loading && <ActivityIndicator />}
       {error && <ThemedText style={{ color: 'red' }}>{error}</ThemedText>}
@@ -81,5 +100,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+  },
+  warningText: {
+    backgroundColor: '#fff3cd',
+    color: '#856404',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 16,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
   },
 }); 

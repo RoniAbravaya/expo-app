@@ -10,7 +10,6 @@
       "silentLaunch": true
     },
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -19,7 +18,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.roniabravaya.expoapp",
+      "package": "com.roni.marketai",
       "intentFilters": [
         {
           "action": "VIEW",

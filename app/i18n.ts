@@ -20,11 +20,24 @@ const resources = {
   ar: { translation: ar },
 };
 
+// Get device locale safely
+const getDeviceLocale = () => {
+  try {
+    const locale = Localization.getLocales?.()?.[0]?.languageCode || 
+                   Localization.locale?.split('-')?.[0] || 
+                   'en';
+    return locale;
+  } catch (error) {
+    console.warn('Failed to get device locale:', error);
+    return 'en';
+  }
+};
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: Localization.locale.split('-')[0], // e.g., 'en', 'zh', etc.
+    lng: getDeviceLocale(),
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes
@@ -32,6 +45,8 @@ i18n
     react: {
       useSuspense: false,
     },
+    // Add debug mode for development
+    debug: __DEV__,
   });
 
 const LANGUAGE_KEY = 'user_language';
@@ -43,13 +58,18 @@ async function loadLanguage() {
       await i18n.changeLanguage(savedLang);
     }
   } catch (e) {
+    console.warn('Failed to load saved language:', e);
     // fallback to default
   }
 }
 
 export async function setLanguage(lang: string) {
-  await i18n.changeLanguage(lang);
-  await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+  try {
+    await i18n.changeLanguage(lang);
+    await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+  } catch (e) {
+    console.warn('Failed to set language:', e);
+  }
 }
 
 // Call loadLanguage on startup

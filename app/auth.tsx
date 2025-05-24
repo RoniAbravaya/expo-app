@@ -17,10 +17,11 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    clientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Your new Web OAuth client
+    iosClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", 
+    androidClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", 
+    webClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Your new Web OAuth client
+    redirectUri: "https://auth.expo.io/@anonymous/expo-app", // More specific redirect URI
   });
   const { t } = useTranslation();
 
