@@ -7,7 +7,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { getAuth, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Button, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 // TODO: Import Google Auth and Biometric logic
 
 WebBrowser.maybeCompleteAuthSession();
@@ -17,12 +17,16 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Your new Web OAuth client
-    iosClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", 
-    androidClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", 
-    webClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Your new Web OAuth client
-    redirectUri: "https://auth.expo.io/@anonymous/expo-app", // More specific redirect URI
+    clientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", // Android client ID
+    iosClientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", 
+    androidClientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", 
+    webClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Keep web client for web builds
+    redirectUri: "expoapp://auth",
   });
+  
+  // Debug: Log the redirect URI being used
+  console.log('🔍 Redirect URI being used:', "expoapp://auth");
+  
   const { t } = useTranslation();
 
   React.useEffect(() => {
@@ -113,22 +117,108 @@ export default function AuthScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ThemedText type="title">{t('auth.title')}</ThemedText>
-      {loading ? <ActivityIndicator /> : <Button title={t('auth.googleButton')} onPress={handleGoogleLogin} />}
-      {biometricEnabled && <Button title={t('auth.biometricButton')} onPress={handleBiometric} />}
-      <Button title={t('auth.resetButton')} onPress={handleResetOnboarding} />
-      {error && <ThemedText style={{ color: 'red' }}>{error}</ThemedText>}
+    <View style={styles.outerContainer}>
+      <View style={styles.card}>
+        <ThemedText type="title" style={styles.title}>{t('auth.title')}</ThemedText>
+        <ThemedText type="subtitle" style={styles.subtitle}>{t('auth.subtitle') || 'to continue to Magic Patterns'}</ThemedText>
+        {/* Email and password fields for visual only, not functional */}
+        <TextInput
+          style={styles.input}
+          placeholder={t('auth.emailPlaceholder') || 'Email'}
+          placeholderTextColor="#9ca3af"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder={t('auth.passwordPlaceholder') || 'Password'}
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+        />
+        <TouchableOpacity style={styles.forgotContainer}>
+          <ThemedText type="link" style={styles.forgot}>{t('auth.forgotPassword') || 'Forgot password?'}</ThemedText>
+        </TouchableOpacity>
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 16 }} />
+        ) : (
+          <Button title={t('auth.googleButton')} onPress={handleGoogleLogin} color="#6366f1" />
+        )}
+        {biometricEnabled && <Button title={t('auth.biometricButton')} onPress={handleBiometric} color="#6366f1" />}
+        <Button title={t('auth.resetButton')} onPress={handleResetOnboarding} color="#e5e7eb" />
+        {error && <ThemedText style={{ color: 'red', marginTop: 16 }}>{error}</ThemedText>}
+      </View>
+      <View style={styles.bottomPrompt}>
+        <ThemedText style={styles.bottomText}>{t('auth.noAccount') || "Don't have an account?"} </ThemedText>
+        <TouchableOpacity>
+          <ThemedText type="link" style={styles.signUp}>{t('auth.signUp') || 'Sign up'}</ThemedText>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
-    gap: 16,
-    padding: 16,
+    alignItems: 'center',
+  },
+  card: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    alignItems: 'stretch',
+  },
+  title: {
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: '#6b7280',
+    marginBottom: 24,
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+  input: {
+    height: 48,
+    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#f9fafb',
+    fontSize: 16,
+    color: '#111827',
+  },
+  forgotContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  forgot: {
+    color: '#6366f1',
+    fontWeight: '500',
+  },
+  bottomPrompt: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  bottomText: {
+    color: '#6b7280',
+    fontSize: 16,
+  },
+  signUp: {
+    color: '#6366f1',
+    fontWeight: '500',
+    fontSize: 16,
   },
 }); 
