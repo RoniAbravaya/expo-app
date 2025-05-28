@@ -1,14 +1,14 @@
 import { ThemedText } from '@/components/ThemedText';
-import * as analyticsService from '@/services/analyticsService';
+import { getGoogleConfig, getRedirectUri } from '@/constants/googleAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import { getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Button, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-// TODO: Import Google Auth and Biometric logic
+import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,18 +16,26 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  
+  // Get the appropriate Google config for current environment
+  const googleConfig = getGoogleConfig();
+  const redirectUri = getRedirectUri();
+  
+  const isExpoGo = Constants.appOwnership === 'expo';
+  
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", // Android client ID
-    iosClientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", 
-    androidClientId: "223350062068-navgqg2tu1ktidmjehn1svnelrv93lo8.apps.googleusercontent.com", 
-    webClientId: "223350062068-gg239dtgv9r56s749kib2vd7leldpoff.apps.googleusercontent.com", // Keep web client for web builds
-    redirectUri: "expoapp://auth",
+    androidClientId: googleConfig.androidClientId,
+    iosClientId: googleConfig.iosClientId,
+    webClientId: googleConfig.webClientId,
+    redirectUri: redirectUri,
   });
   
-  // Debug: Log the redirect URI being used
-  console.log('🔍 Redirect URI being used:', "expoapp://auth");
-  
-  const { t } = useTranslation();
+  console.log('🔍 Auth Request Config:', {
+    androidClientId: googleConfig.androidClientId,
+    iosClientId: googleConfig.iosClientId,
+    webClientId: googleConfig.webClientId,
+    redirectUri: redirectUri,
+  });
 
   React.useEffect(() => {
     // Check if biometric is enabled
@@ -37,55 +45,103 @@ export default function AuthScreen() {
   }, []);
 
   React.useEffect(() => {
+    console.log('🔍 Google Auth Response:', response);
+    
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const auth = getAuth();
-      const credential = GoogleAuthProvider.credential(id_token);
-      setLoading(true);
-      signInWithCredential(auth, credential)
-        .then(async () => {
-          setLoading(false);
-          // Prompt to enable biometric after successful Google login
-          const hasHardware = await LocalAuthentication.hasHardwareAsync();
-          const supported = await LocalAuthentication.isEnrolledAsync();
-          if (hasHardware && supported) {
-            Alert.alert(
-              t('auth.enableBiometricTitle'),
-              t('auth.enableBiometricMsg'),
-              [
-                {
-                  text: t('yes'),
-                  onPress: async () => {
-                    await AsyncStorage.setItem('biometricEnabled', 'true');
-                    setBiometricEnabled(true);
-                    Alert.alert(t('auth.biometricEnabled'));
+      const { id_token, access_token } = response.params;
+      console.log('✅ Google Auth Success - ID Token:', id_token ? 'Present' : 'Missing');
+      
+      if (!id_token) {
+        setError('No ID token received from Google');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if Firebase is initialized
+      if (!getApps().length) {
+        setError('Firebase not initialized');
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const auth = getAuth();
+        const credential = GoogleAuthProvider.credential(id_token, access_token);
+        setLoading(true);
+        
+        signInWithCredential(auth, credential)
+          .then(async (userCredential) => {
+            console.log('✅ Firebase Auth Success:', userCredential.user.email);
+            setLoading(false);
+            setError(null);
+            
+            // Prompt to enable biometric after successful Google login
+            const hasHardware = await LocalAuthentication.hasHardwareAsync();
+            const supported = await LocalAuthentication.isEnrolledAsync();
+            if (hasHardware && supported) {
+              Alert.alert(
+                'Enable Biometric Login?',
+                'Would you like to enable biometric authentication for faster login?',
+                [
+                  {
+                    text: 'Yes',
+                    onPress: async () => {
+                      await AsyncStorage.setItem('biometricEnabled', 'true');
+                      setBiometricEnabled(true);
+                      Alert.alert('Biometric authentication enabled!');
+                    },
                   },
-                },
-                {
-                  text: t('no'),
-                  onPress: async () => {
-                    await AsyncStorage.setItem('biometricEnabled', 'false');
-                    setBiometricEnabled(false);
+                  {
+                    text: 'No',
+                    onPress: async () => {
+                      await AsyncStorage.setItem('biometricEnabled', 'false');
+                      setBiometricEnabled(false);
+                    },
+                    style: 'cancel',
                   },
-                  style: 'cancel',
-                },
-              ]
-            );
-          }
-          await analyticsService.logLogin('google');
-        })
-        .catch((e) => {
-          setError(e.message);
-          setLoading(false);
-        });
+                ]
+              );
+            }
+          })
+          .catch((error) => {
+            console.error('❌ Firebase Auth Error:', error);
+            setError(`Firebase Auth Error: ${error.message}`);
+            setLoading(false);
+          });
+      } catch (error) {
+        console.error('❌ Auth Setup Error:', error);
+        setError(`Auth Setup Error: ${error}`);
+        setLoading(false);
+      }
     } else if (response?.type === 'error') {
-      setError(t('auth.googleLoginFailed'));
+      console.error('❌ Google Auth Error:', response.error);
+      setError(`Google Auth Error: ${response.error?.message || 'Unknown error'}`);
+      setLoading(false);
+    } else if (response?.type === 'cancel') {
+      console.log('⚠️ Google Auth Cancelled');
+      setError('Google sign-in was cancelled');
+      setLoading(false);
     }
   }, [response]);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
+    console.log('🚀 Starting Google Login...');
     setError(null);
-    promptAsync();
+    setLoading(true);
+    
+    try {
+      const result = await promptAsync();
+      console.log('🔍 Prompt Result:', result);
+      
+      // If the result is not success, reset loading state
+      if (result.type !== 'success') {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('❌ Prompt Error:', error);
+      setError(`Login Error: ${error}`);
+      setLoading(false);
+    }
   };
 
   const handleBiometric = async () => {
@@ -93,18 +149,16 @@ export default function AuthScreen() {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const supported = await LocalAuthentication.isEnrolledAsync();
     if (!hasHardware || !supported) {
-      Alert.alert(t('auth.biometricUnavailable'));
+      Alert.alert('Biometric authentication is not available on this device');
       return;
     }
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: t('auth.biometricPrompt'),
+      promptMessage: 'Authenticate with biometrics',
     });
     if (result.success) {
-      // Simulate successful login (in real app, restore session or re-auth)
-      Alert.alert(t('auth.biometricSuccess'));
-      await analyticsService.logLogin('biometric');
+      Alert.alert('Biometric authentication successful!');
     } else {
-      setError(t('auth.biometricFailed'));
+      setError('Biometric authentication failed');
     }
   };
 
@@ -113,44 +167,65 @@ export default function AuthScreen() {
     await AsyncStorage.removeItem('onboardingComplete');
     await AsyncStorage.removeItem('biometricEnabled');
     setBiometricEnabled(false);
-    Alert.alert(t('auth.resetFlags'));
+    Alert.alert('App flags reset! Restart the app to see onboarding.');
   };
 
   return (
     <View style={styles.outerContainer}>
       <View style={styles.card}>
-        <ThemedText type="title" style={styles.title}>{t('auth.title')}</ThemedText>
-        <ThemedText type="subtitle" style={styles.subtitle}>{t('auth.subtitle') || 'to continue to Magic Patterns'}</ThemedText>
+        <ThemedText type="title" style={styles.title}>Welcome Back</ThemedText>
+        <ThemedText type="subtitle" style={styles.subtitle}>Sign in to continue to your account</ThemedText>
+        
         {/* Email and password fields for visual only, not functional */}
         <TextInput
           style={styles.input}
-          placeholder={t('auth.emailPlaceholder') || 'Email'}
+          placeholder="Email"
           placeholderTextColor="#9ca3af"
           autoCapitalize="none"
           keyboardType="email-address"
         />
         <TextInput
           style={styles.input}
-          placeholder={t('auth.passwordPlaceholder') || 'Password'}
+          placeholder="Password"
           placeholderTextColor="#9ca3af"
           secureTextEntry
         />
         <TouchableOpacity style={styles.forgotContainer}>
-          <ThemedText type="link" style={styles.forgot}>{t('auth.forgotPassword') || 'Forgot password?'}</ThemedText>
+          <ThemedText type="link" style={styles.forgot}>Forgot password?</ThemedText>
         </TouchableOpacity>
+        
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 16 }} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <ThemedText style={styles.loadingText}>Signing in...</ThemedText>
+          </View>
         ) : (
-          <Button title={t('auth.googleButton')} onPress={handleGoogleLogin} color="#6366f1" />
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+            <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+          </TouchableOpacity>
         )}
-        {biometricEnabled && <Button title={t('auth.biometricButton')} onPress={handleBiometric} color="#6366f1" />}
-        <Button title={t('auth.resetButton')} onPress={handleResetOnboarding} color="#e5e7eb" />
-        {error && <ThemedText style={{ color: 'red', marginTop: 16 }}>{error}</ThemedText>}
+        
+        {biometricEnabled && (
+          <TouchableOpacity style={styles.biometricButton} onPress={handleBiometric}>
+            <ThemedText style={styles.biometricButtonText}>Use Biometric Login</ThemedText>
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity style={styles.resetButton} onPress={handleResetOnboarding}>
+          <ThemedText style={styles.resetButtonText}>Reset App (Dev Only)</ThemedText>
+        </TouchableOpacity>
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+          </View>
+        )}
       </View>
+      
       <View style={styles.bottomPrompt}>
-        <ThemedText style={styles.bottomText}>{t('auth.noAccount') || "Don't have an account?"} </ThemedText>
+        <ThemedText style={styles.bottomText}>Don't have an account? </ThemedText>
         <TouchableOpacity>
-          <ThemedText type="link" style={styles.signUp}>{t('auth.signUp') || 'Sign up'}</ThemedText>
+          <ThemedText type="link" style={styles.signUp}>Sign up</ThemedText>
         </TouchableOpacity>
       </View>
     </View>
@@ -205,6 +280,64 @@ const styles = StyleSheet.create({
   forgot: {
     color: '#6366f1',
     fontWeight: '500',
+  },
+  googleButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  googleButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  biometricButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  biometricButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetButton: {
+    backgroundColor: '#e5e7eb',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#6b7280',
+  },
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ef4444',
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
   },
   bottomPrompt: {
     flexDirection: 'row',
